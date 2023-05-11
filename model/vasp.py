@@ -55,4 +55,4 @@ class VASP(nn.Module):
         KLD = -0.5 * torch.mean(torch.sum(1 + logvar -
                                        mu.pow(2) - logvar.exp(), dim=1))
 
-      return neg_ll + anneal * 
+        return neg_ll + anneal * KLD 
