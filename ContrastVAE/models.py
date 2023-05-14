@@ -168,7 +168,7 @@ class ContrastVAE_VD(ContrastVAE):
         self.item_encoder_mu = Encoder(args)
         self.item_encoder_logvar = Encoder(args)
         self.item_decoder = Decoder(args)
-
+ 
         self.dropout = nn.Dropout(args.hidden_dropout_prob)
 
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)

@@ -87,17 +87,17 @@ class SelfAttention(nn.Module): # hidden  , attention mask
         attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
-        attention_probs = nn.Softmax(dim=-1)(attention_scores) # batch X 4 X seq_len  X 1
+        attention_probs = nn.Softmax(dim=-1)(attention_scores) # batch X 4 X seq_len  X seq_len
         attention_probs = self.attn_dropout(attention_probs)
         context_layer = torch.matmul(attention_probs, value_layer)
-        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous() # batch, seq_len , 4 , 32
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
-        hidden_states = self.dense(context_layer)
+        hidden_states = self.dense(context_layer) 
         hidden_states = self.out_dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
+        hidden_states = self.LayerNorm(hidden_states + input_tensor) 
 
-        return hidden_states
+        return hidden_states # batch , seq_len, 128
 
 
 
@@ -133,7 +133,7 @@ class Layer(nn.Module): # attention block
         super(Layer, self).__init__()
         self.attention = SelfAttention(args)
         self.intermediate = Intermediate(args)
-
+        self.fft = nn.Linear(self)
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
@@ -204,7 +204,7 @@ class NCELoss(nn.Module):
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.temperature = temperature
         self.cossim = nn.CosineSimilarity(dim=-1).to(self.device)
-
+ 
     # #modified based on impl: https://github.com/ae-foster/pytorch-simclr/blob/dc9ac57a35aec5c7d7d5fe6dc070a975f493c1a5/critic.py#L5
     def forward(self, batch_sample_one, batch_sample_two):  # batch_size*
 

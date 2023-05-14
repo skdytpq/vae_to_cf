@@ -150,7 +150,7 @@ def main():
 
     trainer = ContrastVAETrainer(model, train_dataloader, eval_dataloader,
                               test_dataloader, args)
-
+ 
     if args.do_eval:
         # load the best model
         print('---------------load best model and do eval-------------------')
