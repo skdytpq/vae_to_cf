@@ -317,13 +317,18 @@ class Layer(nn.Module): # attention block
         self.intermediate = Intermediate(args)
         self.hidden_size = 128
         self.i = 1
+        self.innersize = 256
         self.fft = FMBlock(self.hidden_size,self.i,args)
+        self.n_layers = 2
+
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
-            fft_output = self.fft(hidden_states)
-            intermediate_output = self.intermediate(fft_output)
+            for n in range(self.n_layers):
+                fft_output = self.fft(hidden_states,n,self.args)
+                fft_output = self.intermediate(fft_output)
+            intermediate_output = fft_output
         return intermediate_output
 
 
