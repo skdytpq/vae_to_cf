@@ -25,6 +25,16 @@ def main():
     parser.add_argument('--data_name', default='Toys_and_Games', type=str)
     parser.add_argument('--do_eval', action='store_true')
     parser.add_argument('--ckp', default=10, type=int, help="pretrain epochs 10, 20, 30...")
+    # fft args
+    parser.add_argument('--fft_dropout', default=0.5, type=float)
+    parser.add_argument('--fft_n_layers', default=2, type=int)
+    parser.add_argument('--filter_mixer', default='G', type=str)
+    parser.add_argument('--residual', default=True, type=bool)
+    parser.add_argument('--seq_len', default=50, type=int)
+    parser.add_argument('--fft', default=False, type=bool)
+    parser.add_argument('--slide_mode', default='four', type='str')
+    parser.add_argument('--dynamic_ratio', default=0.8, type=float)
+    
 
 
     # model args
@@ -150,7 +160,7 @@ def main():
 
     trainer = ContrastVAETrainer(model, train_dataloader, eval_dataloader,
                               test_dataloader, args)
-
+ 
     if args.do_eval:
         # load the best model
         print('---------------load best model and do eval-------------------')

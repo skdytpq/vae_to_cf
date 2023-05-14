@@ -156,5 +156,5 @@ class SeqDataset(Dataset):
         return list(reordered_item_seq) # 인덱스를 셔플
 
 
-    def __len__(self):
+    def __len__(self): 
         return len(self.user_seq)

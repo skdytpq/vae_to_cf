@@ -17,13 +17,193 @@ def gelu(x):
     """
     return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
-
+ 
 def swish(x):
     return x * torch.sigmoid(x)
 
 ACT2FN = {"gelu": gelu, "relu": F.relu, "swish": swish}
+"""FFT block"""
+class FilterMixerLayer(nn.Module):
+    def __init__(self, hidden_size, i, args):
+        super(FilterMixerLayer, self).__init__()
+        config = args
+        self.args = args
+        self.filter_mixer = args.filter_mixer
+        self.max_item_list_length = args.seq_len
 
+        self.complex_weight = nn.Parameter(torch.randn(1, self.max_item_list_length // 2 + 1, hidden_size, 2, dtype=torch.float32) * 0.02)
+        if self.filter_mixer == 'G':
+            self.complex_weight_G = nn.Parameter(torch.randn(1, self.max_item_list_length // 2 + 1, hidden_size, 2, dtype=torch.float32) * 0.02)
+        elif self.filter_mixer == 'L':
+            self.complex_weight_L = nn.Parameter(torch.randn(1, self.max_item_list_length // 2 + 1, hidden_size, 2, dtype=torch.float32) * 0.02)
+        elif self.filter_mixer == 'M':
+            self.complex_weight_G = nn.Parameter(torch.randn(1, self.max_item_list_length // 2 + 1, hidden_size, 2, dtype=torch.float32) * 0.02)
+            self.complex_weight_L = nn.Parameter(torch.randn(1, self.max_item_list_length // 2 + 1, hidden_size, 2, dtype=torch.float32) * 0.02)
+
+        self.out_dropout = nn.Dropout(args.fft_dropout)
+        self.LayerNorm = nn.LayerNorm(hidden_size, eps=1e-12)
+        self.n_layers = args.fft_n_layers
+
+        self.dynamic_ratio = args.dynamic_ratio
+        self.slide_step = ((self.max_item_list_length // 2 + 1) * (1 - self.dynamic_ratio)) // (self.n_layers - 1)
+
+        self.static_ratio = 1 / self.n_layers
+        self.filter_size = self.static_ratio * (self.max_item_list_length // 2 + 1)
+
+        self.slide_mode = args.slide_mode
+        if self.slide_mode == 'one':
+            G_i = i
+            L_i = self.n_layers - 1 - i
+        elif self.slide_mode == 'two':
+            G_i = self.n_layers - 1 - i
+            L_i = i
+        elif self.slide_mode == 'three':
+            G_i = self.n_layers - 1 - i
+            L_i = self.n_layers - 1 - i
+        elif self.slide_mode == 'four':
+            G_i = i
+            L_i = i
+        # print("slide_mode:", self.slide_mode, len(self.slide_mode), type(self.slide_mode))
+
+
+        if self.filter_mixer == 'G' or self.filter_mixer == 'M':
+            self.w = self.dynamic_ratio
+            self.s = self.slide_step
+            if self.filter_mixer == 'M':
+                self.G_left = int(((self.max_item_list_length // 2 + 1) * (1 - self.w)) - (G_i * self.s))
+                self.G_right = int((self.max_item_list_length // 2 + 1) - G_i * self.s)
+            self.left = int(((self.max_item_list_length // 2 + 1) * (1 - self.w)) - (G_i * self.s))
+            self.right = int((self.max_item_list_length // 2 + 1) - G_i * self.s)
+
+
+        if self.filter_mixer == 'L' or self.filter_mixer == 'M':
+            self.w = self.static_ratio
+            self.s = self.filter_size
+            if self.filter_mixer == 'M':
+                self.L_left = int(((self.max_item_list_length // 2 + 1) * (1 - self.w)) - (L_i * self.s))
+                self.L_right = int((self.max_item_list_length // 2 + 1) - L_i * self.s)
+
+            self.left = int(((self.max_item_list_length // 2 + 1) * (1 - self.w)) - (L_i * self.s))
+            self.right = int((self.max_item_list_length // 2 + 1) - L_i * self.s)
+            print("====================================================================================G_left, right",
+                  self.G_left, self.G_right, self.G_right - self.G_left)
+            print("====================================================================================L_left, Light",
+                  self.L_left, self.L_right, self.L_right - self.L_left)
+
+    def forward(self, input_tensor):
+        # print("input_tensor", input_tensor.shape)
+        batch, seq_len, hidden = input_tensor.shape
+        x = torch.fft.rfft(input_tensor, dim=1, norm='ortho')
+
+        if self.filter_mixer == 'M':
+            weight_g = torch.view_as_complex(self.complex_weight_G)
+            weight_l = torch.view_as_complex(self.complex_weight_L)
+            G_x = x
+            L_x = x.clone()
+            G_x[:, :self.G_left, :] = 0
+            G_x[:, self.G_right:, :] = 0
+            output = G_x * weight_g
+
+            L_x[:, :self.L_left, :] = 0
+            L_x[:, self.L_right:, :] = 0
+            output += L_x * weight_l
+
+
+        else:
+            weight = torch.view_as_complex(self.complex_weight)
+            x[:, :self.left, :] = 0
+            x[:, self.right:, :] = 0
+            output = x * weight
+
+        sequence_emb_fft = torch.fft.irfft(output, n=seq_len, dim=1, norm='ortho')
+        hidden_states = self.out_dropout(sequence_emb_fft)
+
+        if self.args.residual:
+            origianl_out = self.LayerNorm(hidden_states + input_tensor)
+        else:
+            origianl_out = self.LayerNorm(hidden_states)
+
+        return origianl_out
+
+
+class FeedForward(nn.Module):
+    """
+    Point-wise feed-forward layer is implemented by two dense layers.
+
+    Args:
+        input_tensor (torch.Tensor): the input of the point-wise feed-forward layer
+
+    Returns:
+        hidden_states (torch.Tensor): the output of the point-wise feed-forward layer
+
+    """
+
+    def __init__(self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config):
+        super(FeedForward, self).__init__()
+        self.config = config
+        self.dense_1 = nn.Linear(hidden_size, inner_size)
+        self.intermediate_act_fn = self.get_hidden_act(hidden_act)
+        self.dense_2 = nn.Linear(inner_size, hidden_size)
+        self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
+        self.dropout = nn.Dropout(hidden_dropout_prob)  # ori
+
+
+    def get_hidden_act(self, act):
+        ACT2FN = {
+            "gelu": self.gelu,
+            "relu": F.relu,
+            "swish": self.swish,
+            "tanh": torch.tanh,
+            "sigmoid": torch.sigmoid,
+        }
+        return ACT2FN[act]
+
+    def gelu(self, x):
+        """Implementation of the gelu activation function.
+
+        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results)::
+
+            0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+
+        Also see https://arxiv.org/abs/1606.08415
+        """
+        return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
+
+    def swish(self, x):
+        return x * torch.sigmoid(x)
+
+    def forward(self, input_tensor, ori_x):
+        hidden_states = self.dense_1(input_tensor)
+        hidden_states = self.intermediate_act_fn(hidden_states)
+        hidden_states = self.dense_2(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+
+        if self.config['dense']:
+            hidden_states = self.LayerNorm(hidden_states + input_tensor + ori_x)
+        elif self.config['residual']:
+            hidden_states = self.LayerNorm(hidden_states + input_tensor)
+        else:
+            hidden_states = self.LayerNorm(hidden_states)
+
+        return hidden_states
+
+class FMBlock(nn.Module):
+    def __init__(self,
+                 hidden_size ,
+                 i,
+                 args,
+                 ) -> None:
+        super().__init__()
+        #self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config)
+        self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
+
+
+    def forward(self, x):
+        out = self.filter_mixer_layer(x)
+       # out = self.intermediate(out, x)
+        return out
 """Transformer toolkits"""
+
 
 class LayerNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-12):
@@ -87,17 +267,17 @@ class SelfAttention(nn.Module): # hidden  , attention mask
         attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
-        attention_probs = nn.Softmax(dim=-1)(attention_scores) # batch X 4 X seq_len  X 1
+        attention_probs = nn.Softmax(dim=-1)(attention_scores) # batch X 4 X seq_len  X seq_len
         attention_probs = self.attn_dropout(attention_probs)
         context_layer = torch.matmul(attention_probs, value_layer)
-        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous() # batch, seq_len , 4 , 32
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
-        hidden_states = self.dense(context_layer)
+        hidden_states = self.dense(context_layer) 
         hidden_states = self.out_dropout(hidden_states)
-        hidden_states = self.LayerNorm(hidden_states + input_tensor)
+        hidden_states = self.LayerNorm(hidden_states + input_tensor) 
 
-        return hidden_states
+        return hidden_states # batch , seq_len, 128
 
 
 
@@ -129,23 +309,33 @@ class Intermediate(nn.Module):
 
 
 class Layer(nn.Module): # attention block
-    def __init__(self, args):
+    def __init__(self, args,fft_mode):
         super(Layer, self).__init__()
+        self.mode = fft_mode
+        self.args = args
         self.attention = SelfAttention(args)
         self.intermediate = Intermediate(args)
-
+        hidden_size = 128
+        i = 1
+        self.fft = FMBlock(hidden_size,i,args)
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
+        if self.mode:
+            fft_output = self.fft(self)
+            intermediate_output = self.intermediate(fft_output)
         return intermediate_output
 
 
 
 
 class Encoder(nn.Module):
-    def __init__(self, args):
+    def __init__(self,args):
         super(Encoder, self).__init__()
-        layer = Layer(args)
+        if args.mode:
+            layer = Layer(args,fft_mode = True)
+        else:
+            layer = Layer(args,fft_mode = False)
         self.layer = nn.ModuleList([copy.deepcopy(layer)
                                     for _ in range(args.num_hidden_layers)])
 
@@ -165,13 +355,17 @@ class Encoder(nn.Module):
                 all_encoder_layers.append(hidden_states)
         if not output_all_encoded_layers:
             all_encoder_layers.append(hidden_states)
+        pdb.set_trace()
         return all_encoder_layers
 
 
 class Decoder(nn.Module):
-    def __init__(self, args):
+    def __init__(self,args):
         super(Decoder, self).__init__()
-        layer = Layer(args)
+        if args.mode:
+            layer = Layer(args,fft_mode = True)
+        else:
+            layer = Layer(args,fft_mode = False)
         self.layer = nn.ModuleList([copy.deepcopy(layer)
                                     for _ in range(args.num_hidden_layers)])
 
@@ -204,7 +398,7 @@ class NCELoss(nn.Module):
         self.criterion = nn.CrossEntropyLoss().to(self.device)
         self.temperature = temperature
         self.cossim = nn.CosineSimilarity(dim=-1).to(self.device)
-
+ 
     # #modified based on impl: https://github.com/ae-foster/pytorch-simclr/blob/dc9ac57a35aec5c7d7d5fe6dc070a975f493c1a5/critic.py#L5
     def forward(self, batch_sample_one, batch_sample_two):  # batch_size*
 
