@@ -111,10 +111,10 @@ class ContrastVAE(nn.Module):
         else:
             item_encoded_mu_layers = self.item_encoder_mu(sequence_emb,
                                                     extended_attention_mask,
-                                                    output_all_encoded_layers=True)
+                                                    output_all_encoded_layers=True, mode = False)
 
             item_encoded_logvar_layers = self.item_encoder_logvar(sequence_emb, extended_attention_mask,
-                                                                True)
+                                                                True,mode = False)
 
         return item_encoded_mu_layers[-1], item_encoded_logvar_layers[-1]
 
@@ -152,15 +152,22 @@ class ContrastVAE(nn.Module):
             return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
         elif self.args.latent_data_augmentation:
-            aug_sequence_emb = self.add_position_embedding(aug_input_ids)  # shape: b*max_Sq*d
-            aug_extended_attention_mask = self.extended_attention_mask(aug_input_ids)
-
-            mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
-            mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask)
-            z1 = self.reparameterization1(mu1, log_var1, step)
-            z2 = self.reparameterization2(mu2, log_var2, step)
-            reconstructed_seq1 = self.decode(z1, extended_attention_mask)
-            reconstructed_seq2 = self.decode(z2, extended_attention_mask)
+            if self.args.fft:
+                mode = True
+                mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode = False)
+                mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode)
+                z1 = self.reparameterization1(mu1, log_var1, step)
+                z2 = self.reparameterization2(mu2, log_var2, step)
+                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False)
+                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode)
+            else:
+                 mode =  False
+                 mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode)
+                 mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode)
+                 z1 = self.reparameterization1(mu1, log_var1, step)
+                 z2 = self.reparameterization2(mu2, log_var2, step)
+                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode)
+                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode)  
             return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
         else: # vanilla attentive VAE

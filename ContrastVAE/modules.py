@@ -330,9 +330,9 @@ class Layer(nn.Module): # attention block
 
 
 class Encoder(nn.Module):
-    def __init__(self,args):
+    def __init__(self,mode,args):
         super(Encoder, self).__init__()
-        if args.mode:
+        if mode:
             layer = Layer(args,fft_mode = True)
         else:
             layer = Layer(args,fft_mode = False)
@@ -360,9 +360,9 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self,args):
+    def __init__(self,mode,args):
         super(Decoder, self).__init__()
-        if args.mode:
+        if mode:
             layer = Layer(args,fft_mode = True)
         else:
             layer = Layer(args,fft_mode = False)
