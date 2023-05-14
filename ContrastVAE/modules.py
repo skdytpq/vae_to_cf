@@ -333,14 +333,7 @@ class Layer(nn.Module): # attention block
 class Encoder(nn.Module):
     def __init__(self,mode,args):
         super(Encoder, self).__init__()
-        pdb.set_trace()
-        if mode:
-            layer = Layer(args,fft_mode = True)
-        else:
-            layer = Layer(args,fft_mode = False)
-        self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(args.num_hidden_layers)])
-
+        self.args = args
     def forward(self, hidden_states, attention_mask,mode,output_all_encoded_layers=True):
         """
 
@@ -349,7 +342,12 @@ class Encoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-        pdb.set_trace()
+        if mode:
+            layer = Layer(self.args,fft_mode = True)
+        else:
+            layer = Layer(self.args,fft_mode = False)
+        self.layer = nn.ModuleList([copy.deepcopy(layer)
+                                    for _ in range(self.args.num_hidden_layers)])
         all_encoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
@@ -363,12 +361,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self,mode,args):
         super(Decoder, self).__init__()
-        if mode:
-            layer = Layer(args,fft_mode = True)
-        else:
-            layer = Layer(args,fft_mode = False)
-        self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(args.num_hidden_layers)])
+        self.args = args
 
     def forward(self, hidden_states, attention_mask, mode,output_all_encoded_layers=True):
         """
@@ -378,7 +371,12 @@ class Decoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-        
+        if mode:
+            layer = Layer(self.args,fft_mode = True)
+        else:
+            layer = Layer(self.args,fft_mode = False)
+        self.layer = nn.ModuleList([copy.deepcopy(layer)
+                                    for _ in range(self.args.num_hidden_layers)]) 
         all_decoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
