@@ -107,22 +107,28 @@ class ContrastVAE(nn.Module):
                                                 extended_attention_mask,
                                                 output_all_encoded_layers=True,mode = True)
             item_encoded_logvar_layers = self.item_encoder_logvar(sequence_emb, extended_attention_mask,
-                                                              True,mode = True)
+                                                              output_all_encoded_layers=True,mode = True)
         else:
             item_encoded_mu_layers = self.item_encoder_mu(sequence_emb,
                                                     extended_attention_mask,
                                                     output_all_encoded_layers=True, mode = False)
 
             item_encoded_logvar_layers = self.item_encoder_logvar(sequence_emb, extended_attention_mask,
-                                                                True,mode = False)
+                                                                output_all_encoded_layers=True,mode = False)
 
         return item_encoded_mu_layers[-1], item_encoded_logvar_layers[-1]
 
     def decode(self, z, extended_attention_mask,mode):
-        item_decoder_layers = self.item_decoder(z,
-                                                extended_attention_mask,
-                                                output_all_encoded_layers = True,mode = True)
-        sequence_output = item_decoder_layers[-1]
+        if mode:
+            item_decoder_layers = self.item_decoder(z,
+                                                    extended_attention_mask,
+                                                    output_all_encoded_layers = True,mode = True)
+            sequence_output = item_decoder_layers[-1]
+        else: 
+            item_decoder_layers = self.item_decoder(z,
+                                                    extended_attention_mask,
+                                                    output_all_encoded_layers = True,mode = False)
+            sequence_output = item_decoder_layers[-1]
         return sequence_output
 
 
