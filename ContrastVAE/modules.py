@@ -323,7 +323,6 @@ class Layer(nn.Module): # attention block
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
             fft_output = self.fft(hidden_states)
-            pdb.set_trace()
             intermediate_output = self.intermediate(fft_output)
         return intermediate_output
 
