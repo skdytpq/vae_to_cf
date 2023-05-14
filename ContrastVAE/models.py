@@ -158,10 +158,12 @@ class ContrastVAE(nn.Module):
             return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
         elif self.args.latent_data_augmentation:
+            aug_sequence_emb = self.add_position_embedding(aug_input_ids)  # shape: b*max_Sq*d
+            aug_extended_attention_mask = self.extended_attention_mask(aug_input_ids)
             if self.args.fft:
                 mode = True
-                mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode = False)
-                mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode = True)
+                mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode = True)
+                mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode = False)
                 z1 = self.reparameterization1(mu1, log_var1, step)
                 z2 = self.reparameterization2(mu2, log_var2, step)
                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False)
@@ -169,7 +171,7 @@ class ContrastVAE(nn.Module):
             else:
                  mode =  False
                  mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode)
-                 mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode)
+                 mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode)
                  z1 = self.reparameterization1(mu1, log_var1, step)
                  z2 = self.reparameterization2(mu2, log_var2, step)
                  reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode)
