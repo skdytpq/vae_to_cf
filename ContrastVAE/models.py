@@ -141,13 +141,12 @@ class ContrastVAE(nn.Module):
 
         if self.args.latent_contrastive_learning:
             if self.args.fft:
-                mode = True
                 mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode = False)
-                mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode)
+                mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode = True)
                 z1 = self.reparameterization1(mu1, log_var1, step)
                 z2 = self.reparameterization2(mu2, log_var2, step)
                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False)
-                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode)
+                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True)
             else:
                  mode =  False
                  mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode)
