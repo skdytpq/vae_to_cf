@@ -9,12 +9,12 @@ class ContrastVAE(nn.Module):
 
     def __init__(self, args):
         super(ContrastVAE, self).__init__()
-
+        self.mode = None
         self.item_embeddings = nn.Embedding(args.item_size, args.hidden_size, padding_idx=0)
         self.position_embeddings = nn.Embedding(args.max_seq_length, args.hidden_size) # position vector 까지 더해줌 
-        self.item_encoder_mu = Encoder(args) # transformer encoder
-        self.item_encoder_logvar = Encoder(args)
-        self.item_decoder = Decoder(args)
+        self.item_encoder_mu = Encoder(self.mode,args) # transformer encoder
+        self.item_encoder_logvar = Encoder(self.mode,args)
+        self.item_decoder = Decoder(self.mode,args)
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(args.hidden_dropout_prob)
         self.args = args
