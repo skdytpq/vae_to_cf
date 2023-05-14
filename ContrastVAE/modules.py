@@ -347,7 +347,7 @@ class Encoder(nn.Module):
         else:
             layer = Layer(self.args,fft_mode = False)
         self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(self.args.num_hidden_layers)])
+                                    for _ in range(self.args.num_hidden_layers)]).cuda()
         all_encoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
@@ -376,7 +376,7 @@ class Decoder(nn.Module):
         else:
             layer = Layer(self.args,fft_mode = False)
         self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(self.args.num_hidden_layers)]) 
+                                    for _ in range(self.args.num_hidden_layers)]).cuda()
         all_decoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
