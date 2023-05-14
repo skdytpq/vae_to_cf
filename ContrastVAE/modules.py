@@ -339,7 +339,7 @@ class Encoder(nn.Module):
         self.layer = nn.ModuleList([copy.deepcopy(layer)
                                     for _ in range(args.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
+    def forward(self, hidden_states, attention_mask,mode ,output_all_encoded_layers=True):
         """
 
         :param hidden_states: bxmax_Sqxd
@@ -369,7 +369,7 @@ class Decoder(nn.Module):
         self.layer = nn.ModuleList([copy.deepcopy(layer)
                                     for _ in range(args.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
+    def forward(self, hidden_states, attention_mask, mode,output_all_encoded_layers=True):
         """
 
         :param hidden_states: bxmax_Sqxd
