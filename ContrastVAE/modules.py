@@ -198,13 +198,14 @@ class FMBlock(nn.Module):
         self.hidden_size = hidden_size
         self.i = i
         self.args = args
-        #self.filter_mixer_layer = FilterMixerLayer(self.hidden_size, self.i, self.args)
-        
+        self.filter_mixer_layer = FilterMixerLayer(self.hidden_size, self.i, self.args)
+        self.intermediate = Intermediate(args)
 
-    def forward(self, x,n):
-        self.filter_mixer_layer = FilterMixerLayer(self.hidden_size, n, self.args)
-        out = self.filter_mixer_layer(x)
-       # out = self.intermediate(out, x)
+    def forward(self, x):
+        for n in range(self.i):
+            x = self.filter_mixer_layer(x)
+            x = self.intermediate(x)
+        out = x
         return out
 """Transformer toolkits"""
 
@@ -320,7 +321,7 @@ class Layer(nn.Module): # attention block
         self.attention = SelfAttention(args)
         self.intermediate = Intermediate(args)
         self.hidden_size = 128
-        self.i = 1
+        self.i = 2
         self.innersize = 256
         self.fft = FMBlock(self.hidden_size,self.i,args)
         self.n_layers = 2
@@ -329,10 +330,7 @@ class Layer(nn.Module): # attention block
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
-            for n in range(self.n_layers):
-                fft_output = self.fft(hidden_states,n)
-                fft_output = self.intermediate(fft_output)
-            intermediate_output = fft_output
+            intermediate_output = self.fft(hidden_states)
         return intermediate_output
 
 
