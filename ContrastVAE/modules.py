@@ -315,14 +315,14 @@ class Layer(nn.Module): # attention block
         self.args = args
         self.attention = SelfAttention(args)
         self.intermediate = Intermediate(args)
-        hidden_size = 128
-        i = 1
-        self.fft = FMBlock(hidden_size,i,args)
+        self.hidden_size = 128
+        self.i = 1
+        self.fft = FMBlock(self.hidden_size,self.i,args)
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
-            fft_output = self.fft(self)
+            fft_output = self.fft(hidden_states)
             pdb.set_trace()
             intermediate_output = self.intermediate(fft_output)
         return intermediate_output
