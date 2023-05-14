@@ -138,15 +138,15 @@ class FeedForward(nn.Module):
 
     """
 
-    def __init__(self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config):
+    def __init__(self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps):
         super(FeedForward, self).__init__()
-        self.config = config
         self.dense_1 = nn.Linear(hidden_size, inner_size)
         self.intermediate_act_fn = self.get_hidden_act(hidden_act)
         self.dense_2 = nn.Linear(inner_size, hidden_size)
         self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
         self.dropout = nn.Dropout(hidden_dropout_prob)  # ori
-
+        self.dense = False
+        self.res = True
 
     def get_hidden_act(self, act):
         ACT2FN = {
@@ -178,9 +178,9 @@ class FeedForward(nn.Module):
         hidden_states = self.dense_2(hidden_states)
         hidden_states = self.dropout(hidden_states)
 
-        if self.config['dense']:
+        if self.dense:
             hidden_states = self.LayerNorm(hidden_states + input_tensor + ori_x)
-        elif self.config['residual']:
+        elif self.res:
             hidden_states = self.LayerNorm(hidden_states + input_tensor)
         else:
             hidden_states = self.LayerNorm(hidden_states)
@@ -189,18 +189,23 @@ class FeedForward(nn.Module):
 
 class FMBlock(nn.Module):
     def __init__(self,
-                 hidden_size ,
-                 i,
-                 args,
+                 hidden_size ,i,args,
+                 intermediate_size = 512,
+                 hidden_dropout_prob = 0.5,
+                 hidden_act = 'gelu',
+                 layer_norm_eps = 1e-12,
                  ) -> None:
         super().__init__()
-        #self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config)
+        self.i = i
+        self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps)
+        self.args = args
         self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
 
-
     def forward(self, x):
-        out = self.filter_mixer_layer(x)
-       # out = self.intermediate(out, x)
+        for n in range(self.i):
+            x = self.filter_mixer_layer(x)
+            x = self.intermediate(x)
+        out = x
         return out
 """Transformer toolkits"""
 
@@ -315,31 +320,26 @@ class Layer(nn.Module): # attention block
         self.args = args
         self.attention = SelfAttention(args)
         self.intermediate = Intermediate(args)
-        hidden_size = 128
-        i = 1
-        self.fft = FMBlock(hidden_size,i,args)
+        self.hidden_size = 128
+        self.i = 2
+        self.innersize = 256
+        self.fft = FMBlock(self.hidden_size,self.i,args)
+
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
-            fft_output = self.fft(self)
-            intermediate_output = self.intermediate(fft_output)
+            intermediate_output = self.fft(hidden_states)
         return intermediate_output
 
 
 
 
 class Encoder(nn.Module):
-    def __init__(self,args):
+    def __init__(self,mode,args):
         super(Encoder, self).__init__()
-        if args.mode:
-            layer = Layer(args,fft_mode = True)
-        else:
-            layer = Layer(args,fft_mode = False)
-        self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(args.num_hidden_layers)])
-
-    def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
+        self.args = args
+    def forward(self, hidden_states, attention_mask,mode,output_all_encoded_layers=True):
         """
 
         :param hidden_states: bxmax_Sqxd
@@ -347,7 +347,12 @@ class Encoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-
+        if mode:
+            layer = Layer(self.args,fft_mode = True)
+        else:
+            layer = Layer(self.args,fft_mode = False)
+        self.layer = nn.ModuleList([copy.deepcopy(layer)
+                                    for _ in range(self.args.num_hidden_layers)]).cuda()
         all_encoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
@@ -355,21 +360,15 @@ class Encoder(nn.Module):
                 all_encoder_layers.append(hidden_states)
         if not output_all_encoded_layers:
             all_encoder_layers.append(hidden_states)
-        pdb.set_trace()
         return all_encoder_layers
 
 
 class Decoder(nn.Module):
-    def __init__(self,args):
+    def __init__(self,mode,args):
         super(Decoder, self).__init__()
-        if args.mode:
-            layer = Layer(args,fft_mode = True)
-        else:
-            layer = Layer(args,fft_mode = False)
-        self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(args.num_hidden_layers)])
+        self.args = args
 
-    def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
+    def forward(self, hidden_states, attention_mask, mode,output_all_encoded_layers=True):
         """
 
         :param hidden_states: bxmax_Sqxd
@@ -377,7 +376,12 @@ class Decoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-        
+        if mode:
+            layer = Layer(self.args,fft_mode = True)
+        else:
+            layer = Layer(self.args,fft_mode = False)
+        self.layer = nn.ModuleList([copy.deepcopy(layer)
+                                    for _ in range(self.args.num_hidden_layers)]).cuda()
         all_decoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
