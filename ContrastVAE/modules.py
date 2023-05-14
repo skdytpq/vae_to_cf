@@ -318,7 +318,7 @@ class Layer(nn.Module): # attention block
         self.hidden_size = 128
         self.i = 1
         self.innersize = 256
-        self.fft = FMBlock(self.hidden_size,self.i,args)
+        self.fft = FMBlock()
         self.n_layers = 2
 
     def forward(self, hidden_states, attention_mask):
