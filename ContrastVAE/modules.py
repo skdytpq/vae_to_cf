@@ -333,6 +333,7 @@ class Layer(nn.Module): # attention block
 class Encoder(nn.Module):
     def __init__(self,mode,args):
         super(Encoder, self).__init__()
+        pdb.set_trace()
         if mode:
             layer = Layer(args,fft_mode = True)
         else:
@@ -348,7 +349,7 @@ class Encoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-
+        pdb.set_trace()
         all_encoder_layers = []
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)

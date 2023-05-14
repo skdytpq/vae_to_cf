@@ -104,7 +104,6 @@ class ContrastVAE(nn.Module):
 
     def encode(self, sequence_emb, extended_attention_mask,mode): # forward
         if mode : 
-            pdb.set_trace()
             item_encoded_mu_layers = self.item_encoder_mu(sequence_emb,
                                                 extended_attention_mask,
                                                 output_all_encoded_layers=True,mode = True)
