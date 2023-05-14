@@ -195,8 +195,11 @@ class FMBlock(nn.Module):
                  ) -> None:
         super().__init__()
         #self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config)
-        self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
-
+        self.hidden_size = hidden_size
+        self.i = i
+        self.args = args
+        self.filter_mixer_layer = FilterMixerLayer(self.hidden_size, self.i, self.args)
+        
 
     def forward(self, x):
         out = self.filter_mixer_layer(x)
@@ -318,7 +321,7 @@ class Layer(nn.Module): # attention block
         self.hidden_size = 128
         self.i = 1
         self.innersize = 256
-        self.fft = FMBlock()
+        #self.fft = FMBlock(self.hidden_size,)
         self.n_layers = 2
 
     def forward(self, hidden_states, attention_mask):
@@ -326,7 +329,7 @@ class Layer(nn.Module): # attention block
         intermediate_output = self.intermediate(attention_output)
         if self.mode:
             for n in range(self.n_layers):
-                fft_output = self.fft(hidden_states,n,self.args)
+                fft_output = FMBlock(hidden_states,n,self.args)
                 fft_output = self.intermediate(fft_output)
             intermediate_output = fft_output
         return intermediate_output
