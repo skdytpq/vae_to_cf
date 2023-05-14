@@ -223,6 +223,7 @@ class ContrastVAE_VD(ContrastVAE):
             extended_attention_mask = self.extended_attention_mask(input_ids)
             mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
             mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask)
+            pdb.set_trace()
             z1 = self.reparameterization1(mu1, log_var1, step)
             z2, alpha = self.reparameterization3(mu2, log_var2, step)
             reconstructed_seq1 = self.decode(z1, extended_attention_mask)

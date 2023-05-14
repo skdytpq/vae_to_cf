@@ -138,15 +138,15 @@ class FeedForward(nn.Module):
 
     """
 
-    def __init__(self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config):
+    def __init__(self, hidden_size, inner_size, hidden_dropout_prob, hidden_act, layer_norm_eps):
         super(FeedForward, self).__init__()
-        self.config = config
         self.dense_1 = nn.Linear(hidden_size, inner_size)
         self.intermediate_act_fn = self.get_hidden_act(hidden_act)
         self.dense_2 = nn.Linear(inner_size, hidden_size)
         self.LayerNorm = nn.LayerNorm(hidden_size, eps=layer_norm_eps)
         self.dropout = nn.Dropout(hidden_dropout_prob)  # ori
-
+        self.dense = False
+        self.res = True
 
     def get_hidden_act(self, act):
         ACT2FN = {
@@ -178,9 +178,9 @@ class FeedForward(nn.Module):
         hidden_states = self.dense_2(hidden_states)
         hidden_states = self.dropout(hidden_states)
 
-        if self.config['dense']:
+        if self.dense:
             hidden_states = self.LayerNorm(hidden_states + input_tensor + ori_x)
-        elif self.config['residual']:
+        elif self.res:
             hidden_states = self.LayerNorm(hidden_states + input_tensor)
         else:
             hidden_states = self.LayerNorm(hidden_states)
@@ -189,17 +189,17 @@ class FeedForward(nn.Module):
 
 class FMBlock(nn.Module):
     def __init__(self,
-                 hidden_size ,
-                 i,
-                 args,
+                 hidden_size ,i,args,
+                 intermediate_size = 512,
+                 hidden_dropout_prob = 0.5,
+                 hidden_act = 'gelu',
+                 layer_norm_eps = 1e-12,
                  ) -> None:
         super().__init__()
-        #self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps, config)
-        self.hidden_size = hidden_size
         self.i = i
+        self.intermediate = FeedForward(hidden_size, intermediate_size, hidden_dropout_prob, hidden_act, layer_norm_eps)
         self.args = args
-        self.filter_mixer_layer = FilterMixerLayer(self.hidden_size, self.i, self.args)
-        self.intermediate = Intermediate(args)
+        self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
 
     def forward(self, x):
         for n in range(self.i):
@@ -324,7 +324,6 @@ class Layer(nn.Module): # attention block
         self.i = 2
         self.innersize = 256
         self.fft = FMBlock(self.hidden_size,self.i,args)
-        self.n_layers = 2
 
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
