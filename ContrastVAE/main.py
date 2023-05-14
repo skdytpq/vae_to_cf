@@ -32,7 +32,7 @@ def main():
     parser.add_argument('--residual', default=True, type=bool)
     parser.add_argument('--seq_len', default=50, type=int)
     parser.add_argument('--fft', default=False, type=bool)
-    parser.add_argument('--slide_mode', default='four', type='str')
+    parser.add_argument('--slide_mode', default='four', type=str)
     parser.add_argument('--dynamic_ratio', default=0.8, type=float)
     
 
