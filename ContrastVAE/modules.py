@@ -172,14 +172,14 @@ class FeedForward(nn.Module):
     def swish(self, x):
         return x * torch.sigmoid(x)
 
-    def forward(self, input_tensor, ori_x):
+    def forward(self, input_tensor):
         hidden_states = self.dense_1(input_tensor)
         hidden_states = self.intermediate_act_fn(hidden_states)
         hidden_states = self.dense_2(hidden_states)
         hidden_states = self.dropout(hidden_states)
 
         if self.dense:
-            hidden_states = self.LayerNorm(hidden_states + input_tensor + ori_x)
+            hidden_states = self.LayerNorm(hidden_states + input_tensor )
         elif self.res:
             hidden_states = self.LayerNorm(hidden_states + input_tensor)
         else:
@@ -202,6 +202,7 @@ class FMBlock(nn.Module):
         self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
 
     def forward(self, x):
+        pdb.set_trace()
         for n in range(self.i):
             x = self.filter_mixer_layer(x)
             x = self.intermediate(x)
@@ -347,6 +348,7 @@ class Encoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
+        pdb.set_trace()
         if mode:
             layer = Layer(self.args,fft_mode = True)
         else:
