@@ -5,6 +5,59 @@ import math
 import numpy as np
 import random
 import pdb
+import torch
+import matplotlib.pyplot as plt
+import numpy as np
+from torch import nn
+
+class PositionalEncoding(nn.Module):
+    
+    def __init__(self, d_model, max_len):
+        """
+        sin, cos encoding 구현
+        
+        parameter
+        - d_model : model의 차원
+        - max_len : 최대 seaquence 길이
+        - device : cuda or cpu
+        """
+        
+        super(PositionalEncoding, self).__init__() # nn.Module 초기화
+        
+        # input matrix(자연어 처리에선 임베딩 벡터)와 같은 size의 tensor 생성
+        # 즉, (max_len, d_model) size
+        self.encoding = torch.zeros(max_len, d_model).cuda()
+        self.encoding.requires_grad = False # 인코딩의 그래디언트는 필요 없다. 
+        
+        # 위치 indexing용 벡터
+        # pos는 max_len의 index를 의미한다.
+        pos = torch.arange(0, max_len).cuda()
+        # 1D : (max_len, ) size -> 2D : (max_len, 1) size -> word의 위치를 반영하기 위해
+        
+        pos = pos.float().unsqueeze(dim=1) # int64 -> float32 (없어도 되긴 함)
+        
+        # i는 d_model의 index를 의미한다. _2i : (d_model, ) size
+        # 즉, embedding size가 512일 때, i = [0,512]
+        _2i = torch.arange(0, d_model, step=2).float().cuda()
+        
+        # (max_len, 1) / (d_model/2 ) -> (max_len, d_model/2)
+        self.encoding[:, ::2] = torch.sin(pos / (10000 ** (_2i / d_model)))
+        self.encoding[:, 1::2] = torch.cos(pos / (10000 ** (_2i / d_model)))
+        
+        
+    def forward(self, x):
+        # self.encoding
+        # [max_len = 512, d_model = 512]
+
+        # batch_size = 128, seq_len = 30
+        batch_size, seq_len = x.size() 
+        
+        # [seq_len = 30, d_model = 512]
+        # [128, 30, 512]의 size를 가지는 token embedding에 더해질 것이다. 
+        # 
+        return self.encoding[:seq_len, :]
+        
+
 
 class ContrastVAE(nn.Module):
 
@@ -13,6 +66,7 @@ class ContrastVAE(nn.Module):
         self.mode = None
         self.item_embeddings = nn.Embedding(args.item_size, args.hidden_size, padding_idx=0)
         self.position_embeddings = nn.Embedding(args.max_seq_length, args.hidden_size) # position vector 까지 더해줌 
+        self.position_encoding = PositionalEncoding(args.max_seq_length,args.hidden_size)
         self.item_encoder_mu = Encoder(self.mode,args) # transformer encoder
         self.item_encoder_logvar = Encoder(self.mode,args)
         self.item_decoder = Decoder(self.mode,args)
@@ -30,7 +84,11 @@ class ContrastVAE(nn.Module):
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
         position_embeddings = self.position_embeddings(position_ids)
-        sequence_emb = item_embeddings + position_embeddings
+        position_encoding = self.position_encoding(sequence)
+        if self.args.encoding :
+            sequence_emb = item_embeddings + position_encoding + position_embeddings
+        else:
+            sequence_emb = item_embeddings + position_embeddings
         sequence_emb = self.LayerNorm(sequence_emb)
         sequence_emb = self.dropout(sequence_emb)
 
@@ -163,10 +221,10 @@ class ContrastVAE(nn.Module):
             if self.args.fft:
                 mode = True
                 mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode = True)
-                mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode = False)
+                mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode = True)
                 z1 = self.reparameterization1(mu1, log_var1, step)
                 z2 = self.reparameterization2(mu2, log_var2, step)
-                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False)
+                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = True)
                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True)
             else:
                  mode =  False
