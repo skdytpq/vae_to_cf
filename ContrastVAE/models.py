@@ -39,7 +39,7 @@ class PositionalEncoding(nn.Module):
         # i는 d_model의 index를 의미한다. _2i : (d_model, ) size
         # 즉, embedding size가 512일 때, i = [0,512]
         _2i = torch.arange(0, d_model, step=2).float()
-        
+        pdb.set_trace()
         # (max_len, 1) / (d_model/2 ) -> (max_len, d_model/2)
         self.encoding[:, ::2] = torch.sin(pos / (10000 ** (_2i / d_model)))
         self.encoding[:, 1::2] = torch.cos(pos / (10000 ** (_2i / d_model)))
@@ -83,7 +83,7 @@ class ContrastVAE(nn.Module):
         position_ids = torch.arange(seq_length, dtype=torch.long, device=sequence.device)
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
-        pdb.set_trace()
+        
         position_embeddings = self.position_embeddings(position_ids)
         position_encoding = self.position_encoding(sequence)
         if self.args.encoding :
