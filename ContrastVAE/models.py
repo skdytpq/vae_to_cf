@@ -31,19 +31,17 @@ class PositionalEncoding(nn.Module):
         
         # 위치 indexing용 벡터
         # pos는 max_len의 index를 의미한다.
-        pos = torch.arange(0, max_len)
+        pos = torch.arange(0, max_len).unsqueeze(dim=1)
         # 1D : (max_len, ) size -> 2D : (max_len, 1) size -> word의 위치를 반영하기 위해
-        pdb.set_trace()
 #        pos = pos.float().unsqueeze(dim=1) # int64 -> float32 (없어도 되긴 함)
         
         # i는 d_model의 index를 의미한다. _2i : (d_model, ) size
         # 즉, embedding size가 512일 때, i = [0,512]
         _2i = torch.arange(0, d_model, step=2).float()
         # (max_len, 1) / (d_model/2 ) -> (max_len, d_model/2)
-        sin = torch.Tensor([torch.Tensor([torch.sin( i / (10000 ** (_2i / d_model)))]) for i in range(pos.shape[0]) ])
-        cos = torch.Tensor([torch.Tensor([torch.cos( i / (10000 ** (_2i / d_model)))]) for i in range(pos.shape[0]) ])
-        self.encoding[:, ::2] = sin
-        self.encoding[:, 1::2] = cos
+
+        self.encoding[:, ::2] = torch.sin(pos / 10000 ** (_2i / d_model))
+        self.encoding[:, 1::2] = torch.cos(pos / 10000 ** (_2i / d_model))
         
 
     def forward(self, x):
