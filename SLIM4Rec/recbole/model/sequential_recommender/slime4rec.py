@@ -44,7 +44,7 @@ class SLIME4Rec(SequentialRecommender):
 
         # define layers and loss
         self.item_embedding = nn.Embedding(self.n_items, self.hidden_size, padding_idx=0)
-        self.position_embedding = nn.Embedding(self.max_seq_length, self.hidden_size)
+        self.position_embedding = nn.Embedding(self.max_seq_length, self.hidden_size)     
         self.my_encoder = Encoder(
         n_layers=self.n_layers,
         hidden_size=self.hidden_size,
