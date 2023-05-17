@@ -86,6 +86,7 @@ class ContrastVAE(nn.Module):
         position_embeddings = self.position_embeddings(position_ids)
         position_encoding = self.position_encoding(sequence)
         if self.args.encoding :
+            pdb.set_trace()
             sequence_emb = item_embeddings + position_encoding.cuda() + position_embeddings
         else:
             sequence_emb = item_embeddings + position_embeddings
