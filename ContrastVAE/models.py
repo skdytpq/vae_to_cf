@@ -79,7 +79,7 @@ class ContrastVAE(nn.Module):
 
         seq_length = sequence.size(1)
         pdb.set_trace()
-        position_ids = torch.arange(seq_length, dtype=torch.long, device=sequence.device)
+        position_ids = torch.arange(seq_length, dtype=torch.long).cuda()
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
         
