@@ -40,23 +40,24 @@ class PositionalEncoding(nn.Module):
         # 즉, embedding size가 512일 때, i = [0,512]
         _2i = torch.arange(0, d_model, step=2).float()
         # (max_len, 1) / (d_model/2 ) -> (max_len, d_model/2)
-        self.encoding[:, ::2] = torch.sin(pos / (10000 ** (_2i / d_model)))
-        self.encoding[:, 1::2] = torch.cos(pos / (10000 ** (_2i / d_model)))
+        sin = torch.Tensor([torch.sin( i / (10000 ** (_2i / d_model))) for i in pos.shape[0] ])
+        cos = torch.Tensor([torch.cos( i / (10000 ** (_2i / d_model))) for i in pos.shape[0] ])
+        self.encoding[:, ::2] = sin
+        self.encoding[:, 1::2] = cos
         
-        
+
     def forward(self, x):
         # self.encoding
         # [max_len = 512, d_model = 512]
 
         # batch_size = 128, seq_len = 30
-        batch_size, seq_len = x.size() 
+        batch_size, seq_len = x.size()
         
         # [seq_len = 30, d_model = 512]
         # [128, 30, 512]의 size를 가지는 token embedding에 더해질 것이다. 
         # 
         return self.encoding[:seq_len, :]
         
-
 
 class ContrastVAE(nn.Module):
 
