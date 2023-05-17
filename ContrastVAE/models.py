@@ -34,7 +34,7 @@ class PositionalEncoding(nn.Module):
         pos = torch.arange(0, max_len).cuda()
         # 1D : (max_len, ) size -> 2D : (max_len, 1) size -> word의 위치를 반영하기 위해
         
-        pos = pos.float().unsqueeze(dim=1) # int64 -> float32 (없어도 되긴 함)
+#        pos = pos.float().unsqueeze(dim=1) # int64 -> float32 (없어도 되긴 함)
         
         # i는 d_model의 index를 의미한다. _2i : (d_model, ) size
         # 즉, embedding size가 512일 때, i = [0,512]
