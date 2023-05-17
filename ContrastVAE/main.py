@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--fft', default=True, type=bool)
     parser.add_argument('--slide_mode', default='four', type=str)
     parser.add_argument('--dynamic_ratio', default=0.8, type=float)
+    parser.add_argument('--encoding' , default= True , type = bool)
 
 
 
