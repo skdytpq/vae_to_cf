@@ -78,7 +78,7 @@ class ContrastVAE(nn.Module):
     def add_position_embedding(self, sequence):
 
         seq_length = sequence.size(1)
-        position_ids = torch.arange(seq_length, dtype=torch.long).cuda()
+        position_ids = torch.arange(seq_length, dtype=torch.long)
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
         
