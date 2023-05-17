@@ -33,6 +33,7 @@ class PositionalEncoding(nn.Module):
         # pos는 max_len의 index를 의미한다.
         pos = torch.arange(0, max_len).unsqueeze(dim=1)
         # 1D : (max_len, ) size -> 2D : (max_len, 1) size -> word의 위치를 반영하기 위해
+
 #        pos = pos.float().unsqueeze(dim=1) # int64 -> float32 (없어도 되긴 함)
         
         # i는 d_model의 index를 의미한다. _2i : (d_model, ) size
@@ -76,16 +77,16 @@ class ContrastVAE(nn.Module):
         self.temperature = nn.Parameter(torch.zeros(1), requires_grad=True)
 
     def add_position_embedding(self, sequence):
-        sequence = sequence.cuda()
+
         seq_length = sequence.size(1)
-        position_ids = torch.arange(seq_length, dtype=torch.long).cuda()
+        position_ids = torch.arange(seq_length, dtype=torch.long, device=sequence.device)
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
         
         position_embeddings = self.position_embeddings(position_ids)
         position_encoding = self.position_encoding(sequence)
         if self.args.encoding :
-            sequence_emb = item_embeddings + position_encoding + position_embeddings.cuda()
+            sequence_emb = item_embeddings + position_encoding + position_embeddings
         else:
             sequence_emb = item_embeddings + position_embeddings
         sequence_emb = self.LayerNorm(sequence_emb)
