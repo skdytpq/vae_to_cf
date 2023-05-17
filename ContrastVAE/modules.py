@@ -202,7 +202,7 @@ class FMBlock(nn.Module):
         self.filter_mixer_layer = FilterMixerLayer(hidden_size, i, args)
 
     def forward(self, x):
-        pdb.set_trace()
+
         for n in range(self.i):
             x = self.filter_mixer_layer(x)
             x = self.intermediate(x)
@@ -348,7 +348,6 @@ class Encoder(nn.Module):
         :param output_all_encoded_layers: True or False
         :return:
         """
-        pdb.set_trace()
         if mode:
             layer = Layer(self.args,fft_mode = True)
         else:
