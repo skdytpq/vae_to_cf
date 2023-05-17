@@ -83,10 +83,10 @@ class ContrastVAE(nn.Module):
         position_ids = torch.arange(seq_length, dtype=torch.long, device=sequence.device)
         position_ids = position_ids.unsqueeze(0).expand_as(sequence)
         item_embeddings = self.item_embeddings(sequence) # shape: b*max_Sq*d
+        pdb.set_trace()
         position_embeddings = self.position_embeddings(position_ids)
         position_encoding = self.position_encoding(sequence)
         if self.args.encoding :
-            pdb.set_trace()
             sequence_emb = item_embeddings + position_encoding.cuda() + position_embeddings
         else:
             sequence_emb = item_embeddings + position_embeddings
