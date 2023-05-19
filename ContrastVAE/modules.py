@@ -229,7 +229,7 @@ class LayerNorm(nn.Module):
 
 
 class SelfAttention(nn.Module): # hidden  , attention mask
-    def __init__(self, args,ed):
+    def __init__(self, args,ed = False):
         super(SelfAttention, self).__init__() # Default hidden size = 128 , attention head = 4
         if args.hidden_size % args.num_attention_heads != 0:
             raise ValueError(
@@ -244,7 +244,9 @@ class SelfAttention(nn.Module): # hidden  , attention mask
         self.value = nn.Linear(args.hidden_size, self.all_head_size)
         if ed:
             self.attn_dropout = nn.Dropout(ed)
-        self.attn_dropout = nn.Dropout(args.attention_probs_dropout_prob)
+        else:
+
+            self.attn_dropout = nn.Dropout(args.attention_probs_dropout_prob)
 
         self.dense = nn.Linear(args.hidden_size, args.hidden_size) # 128 X 128
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)
@@ -290,7 +292,7 @@ class SelfAttention(nn.Module): # hidden  , attention mask
 
 
 class Intermediate(nn.Module):
-    def __init__(self, args,ed):
+    def __init__(self, args,ed = False):
         super(Intermediate, self).__init__()
         self.dense_1 = nn.Linear(args.hidden_size, args.hidden_size * 4)
         if isinstance(args.hidden_act, str):
