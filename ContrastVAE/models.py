@@ -224,16 +224,16 @@ class ContrastVAE(nn.Module):
                 mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode = True)
                 z1 = self.reparameterization1(mu1, log_var1, step)
                 z2 = self.reparameterization2(mu2, log_var2, step)
-                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = True)
-                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True)
+                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = True,ed = ed)
+                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True,ed = ed)
             else:
                  mode =  False
                  mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode)
                  mu2, log_var2 = self.encode(aug_sequence_emb, aug_extended_attention_mask,mode)
                  z1 = self.reparameterization1(mu1, log_var1, step)
                  z2 = self.reparameterization2(mu2, log_var2, step)
-                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode)
-                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode)  
+                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode,ed = ed)
+                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode,ed = ed)  
             return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
         else: # vanilla attentive VAE
