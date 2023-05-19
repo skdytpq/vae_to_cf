@@ -357,7 +357,6 @@ class ContrastVAETrainer(Trainer):
             with torch.no_grad():
                 pred_list = None
                 if self.args.word_dropout:
-                    pdb.set_trace()
                     ed = word_dropout(step = self.drop_step)
                 else:
                     ed = False
