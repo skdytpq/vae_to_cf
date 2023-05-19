@@ -335,6 +335,7 @@ class Layer(nn.Module): # attention block
     def forward(self, hidden_states, attention_mask):
         attention_output = self.attention(hidden_states, attention_mask)
         intermediate_output = self.intermediate(attention_output)
+        pdb.set_trace()
         if self.mode:
             intermediate_output = self.fft(hidden_states)
         return intermediate_output
