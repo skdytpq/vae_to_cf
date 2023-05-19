@@ -301,7 +301,7 @@ class ContrastVAETrainer(Trainer):
                 batch = tuple(t.to(self.device) for t in batch)
                 _, input_ids, target_pos, target_neg, _,aug_input_ids = batch # input_ids, target_ids: [b,max_Sq]
 
-                ed = word_dropout(self.drop_step)
+                ed = word_dropout(step = self.drop_step)
                 if self.variational_dropout:
                     # reconstructed_seq1, reconstructed_seq2, mu, log_var, alpha = self.model.forward(input_ids, self.step)  # shape:b*max_Sq*d
                     reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids,0, self.step,ed = ed)
