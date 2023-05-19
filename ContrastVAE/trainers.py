@@ -353,7 +353,7 @@ class ContrastVAETrainer(Trainer):
 
             with torch.no_grad():
                 pred_list = None
-
+                ed = word_dropout(step = self.drop_step)
                 if self.args.store_latent:
                     user_embeddings = torch.zeros((self.args.num_users, self.args.hidden_size))
                     seq_mus = torch.zeros((self.args.num_users, self.args.max_seq_length, self.args.hidden_size))
@@ -371,7 +371,7 @@ class ContrastVAETrainer(Trainer):
                         istarget =torch.unsqueeze((target_pos > 0),-1) # [batch*seq_len]
 
                         if self.variational_dropout:
-                            recommend_reconstruct1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha= self.model.forward(input_ids,0, self.step)
+                            recommend_reconstruct1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha= self.model.forward(input_ids,0, self.step,ed = ed)
                             if self.args.store_latent:
                                 user_embeddings[user_ids, :] = torch.sum(z1*istarget, 1).cpu()
                                 seq_mus[user_ids, :,:] = mu1.cpu()
@@ -379,7 +379,7 @@ class ContrastVAETrainer(Trainer):
 
 
                         elif self.args.latent_contrastive_learning:
-                            recommend_reconstruct1, recommend_reconstruct2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, 0, self.step)
+                            recommend_reconstruct1, recommend_reconstruct2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, 0, self.step,ed = ed)
                             if self.args.store_latent:
                                 user_embeddings[user_ids, :] = torch.sum(z1*istarget, 1).cpu()
                                 seq_mus[user_ids, :, :] = mu1.cpu()
@@ -387,21 +387,21 @@ class ContrastVAETrainer(Trainer):
 
                         elif self.args.latent_data_augmentation == True:
                             recommend_reconstruct1, recommend_reconstruct2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(
-                                input_ids, aug_input_ids, self.step)
+                                input_ids, aug_input_ids, self.step,ed =ed)
                             if self.args.store_latent:
                                 user_embeddings[user_ids, :] = (z1*istarget).sum(1).cpu()
                                 seq_mus[user_ids,:, :] = mu1.cpu()
                                 seq_logvar[user_ids,:, :] = log_var1.cpu()
 
                         elif self.args.VAandDA:
-                            recommend_reconstruct1, _, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids, aug_input_ids, self.step)
+                            recommend_reconstruct1, _, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids, aug_input_ids, self.step, ed = ed)
                             if self.args.store_latent:
                                 user_embeddings[user_ids, :] = (z1*istarget).sum(1).cpu()
                                 seq_mus[user_ids,:, :] = mu1.cpu()
                                 seq_logvar[user_ids,:, :] = log_var1.cpu()
                                 
                         else: # vanila beta-vae with transformerr
-                            recommend_reconstruct1, mu, log_var,= self.model.forward(input_ids,0, self.step)
+                            recommend_reconstruct1, mu, log_var,= self.model.forward(input_ids,0, self.step,ed = ed)
                             if self.args.store_latent:
                                 res = mu + torch.exp(0.5 * log_var)
                                 user_embeddings[user_ids, :] = torch.sum(res*istarget, 1).cpu()
