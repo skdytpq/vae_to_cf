@@ -35,7 +35,8 @@ def main():
     parser.add_argument('--slide_mode', default='four', type=str)
     parser.add_argument('--dynamic_ratio', default=0.8, type=float)
     parser.add_argument('--encoding' , default= True , type = bool)
-
+    # droupout custom
+    parser.add_argument('--word_dropout' , defalut = 0 , type = int)
 
 
     # model args

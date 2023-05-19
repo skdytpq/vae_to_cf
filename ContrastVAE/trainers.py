@@ -300,8 +300,10 @@ class ContrastVAETrainer(Trainer):
                 
                 batch = tuple(t.to(self.device) for t in batch)
                 _, input_ids, target_pos, target_neg, _,aug_input_ids = batch # input_ids, target_ids: [b,max_Sq]
-
-                ed = word_dropout(step = self.drop_step)
+                if self.args.word_dropout:
+                    ed = word_dropout(step = self.drop_step)
+                else:
+                    ed = False
                 if self.variational_dropout:
                     # reconstructed_seq1, reconstructed_seq2, mu, log_var, alpha = self.model.forward(input_ids, self.step)  # shape:b*max_Sq*d
                     reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids,0, self.step,ed = ed)
@@ -353,7 +355,10 @@ class ContrastVAETrainer(Trainer):
 
             with torch.no_grad():
                 pred_list = None
-                ed = word_dropout(step = self.drop_step)
+                if self.args.word_dropout:
+                    ed = word_dropout(step = self.drop_step)
+                else:
+                    ed = False
                 if self.args.store_latent:
                     user_embeddings = torch.zeros((self.args.num_users, self.args.hidden_size))
                     seq_mus = torch.zeros((self.args.num_users, self.args.max_seq_length, self.args.hidden_size))
