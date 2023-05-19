@@ -8,6 +8,28 @@ import torch.nn as nn
 from torch.optim import Adam
 from modules import NCELoss, priorKL
 from utils import recall_at_k, ndcg_k, get_metric, cal_mrr, get_user_performance_perpopularity, get_item_performance_perpopularity
+def word_dropout(self, step, maximum=0.7, minimum=0.3, warmup=2000, period=500):
+
+    '''
+
+    This is the Cyclical Word-Dropout
+
+    :param step: current training step
+    :param maximum: maximum word_dropout values
+    :param minimum: minimum word_Dropout values
+    :param warmup: number of training step before starting the cyclic
+    :param period: periodo of the word_Dropout
+    :return: word_dropout_rate
+    '''
+
+    if step < warmup:
+        return maximum
+    y = np.abs(np.cos(((2 * np.pi) / period) * step))
+    if y > maximum:
+        y = maximum
+    if y < minimum:
+        y = minimum
+    return y
 
 class Trainer:
     def __init__(self, model, train_dataloader,
@@ -265,7 +287,7 @@ class ContrastVAETrainer(Trainer):
     def iteration(self, epoch, dataloader, full_sort=False, train=True):
 
         str_code = "train" if train else "test"
-
+        self.drop_step = 0
         rec_data_iter = dataloader
         if train:
             self.model.train()
@@ -279,26 +301,26 @@ class ContrastVAETrainer(Trainer):
                 batch = tuple(t.to(self.device) for t in batch)
                 _, input_ids, target_pos, target_neg, _,aug_input_ids = batch # input_ids, target_ids: [b,max_Sq]
 
-
+                ed = word_dropout(self.drop_step)
                 if self.variational_dropout:
                     # reconstructed_seq1, reconstructed_seq2, mu, log_var, alpha = self.model.forward(input_ids, self.step)  # shape:b*max_Sq*d
-                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids,0, self.step)
+                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids,0, self.step,ed = ed)
                     loss, recons_auc = self.loss_fn_VD_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2,z1,z2, target_pos, target_neg, self.step, alpha)
 
                 elif self.args.latent_contrastive_learning:
-                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, 0,self.step)
+                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, 0,self.step,ed=ed)
                     loss, recons_auc  = self.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, target_pos, target_neg, self.step)
 
                 elif self.args.latent_data_augmentation:
-                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, aug_input_ids, self.step)
+                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2 = self.model.forward(input_ids, aug_input_ids, self.step,ed=ed)
                     loss, recons_auc = self.loss_fn_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2,log_var1, log_var2, z1, z2, target_pos, target_neg,self.step)
                 
                 elif self.args.VAandDA:
-                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids, aug_input_ids, self.step)
+                    reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2, alpha = self.model.forward(input_ids, aug_input_ids, self.step,ed=ed)
                     loss, recons_auc = self.loss_fn_VD_latent_clr(reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2,z1,z2, target_pos, target_neg, self.step, alpha)
 
                 else:
-                    reconstructed_seq1,  mu, log_var = self.model.forward(input_ids, 0, self.step)  # shape:b*max_Sq*d
+                    reconstructed_seq1,  mu, log_var = self.model.forward(input_ids, 0, self.step,ed=ed)  # shape:b*max_Sq*d
                     loss, recons_auc = self.loss_fn_vanila(reconstructed_seq1, mu, log_var, target_pos, target_neg, self.step)
 
 
@@ -308,6 +330,7 @@ class ContrastVAETrainer(Trainer):
                 self.optim.step()
 
                 self.step += 1
+                self.drop_step +=1 
                 rec_avg_loss += loss.item()
                 rec_cur_loss = loss.item()
                 rec_avg_auc += recons_auc.item()

@@ -177,22 +177,22 @@ class ContrastVAE(nn.Module):
 
         return item_encoded_mu_layers[-1], item_encoded_logvar_layers[-1]
 
-    def decode(self, z, extended_attention_mask,mode):
+    def decode(self, z, extended_attention_mask,mode,ed):
         if mode:
             item_decoder_layers = self.item_decoder(z,
                                                     extended_attention_mask,
-                                                    output_all_encoded_layers = True,mode = True)
+                                                    output_all_encoded_layers = True,mode = True, ed = ed)
             sequence_output = item_decoder_layers[-1]
         else: 
             item_decoder_layers = self.item_decoder(z,
                                                     extended_attention_mask,
-                                                    output_all_encoded_layers = True,mode = False)
+                                                    output_all_encoded_layers = True,mode = False, ed = ed)
             sequence_output = item_decoder_layers[-1]
         return sequence_output
 
 
 
-    def forward(self, input_ids, aug_input_ids, step):
+    def forward(self, input_ids, aug_input_ids, step,ed):
 
         sequence_emb = self.add_position_embedding(input_ids)# shape: b*max_Sq*d
         extended_attention_mask = self.extended_attention_mask(input_ids)
@@ -203,16 +203,16 @@ class ContrastVAE(nn.Module):
                 mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode = True)
                 z1 = self.reparameterization1(mu1, log_var1, step)
                 z2 = self.reparameterization2(mu2, log_var2, step)
-                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False)
-                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True)
+                reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode = False,ed = ed)
+                reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode = True,ed = ed)
             else:
                  mode =  False
                  mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask,mode)
                  mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask,mode)
                  z1 = self.reparameterization1(mu1, log_var1, step)
                  z2 = self.reparameterization2(mu2, log_var2, step)
-                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode)
-                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode)               
+                 reconstructed_seq1 = self.decode(z1, extended_attention_mask,mode,ed = ed)
+                 reconstructed_seq2 = self.decode(z2, extended_attention_mask,mode,ed = ed)               
             return reconstructed_seq1, reconstructed_seq2, mu1, mu2, log_var1, log_var2, z1, z2
 
         elif self.args.latent_data_augmentation:

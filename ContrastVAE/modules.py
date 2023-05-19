@@ -229,7 +229,7 @@ class LayerNorm(nn.Module):
 
 
 class SelfAttention(nn.Module): # hidden  , attention mask
-    def __init__(self, args):
+    def __init__(self, args,ed):
         super(SelfAttention, self).__init__() # Default hidden size = 128 , attention head = 4
         if args.hidden_size % args.num_attention_heads != 0:
             raise ValueError(
@@ -242,7 +242,8 @@ class SelfAttention(nn.Module): # hidden  , attention mask
         self.query = nn.Linear(args.hidden_size, self.all_head_size) # 128 X 128 
         self.key = nn.Linear(args.hidden_size, self.all_head_size) 
         self.value = nn.Linear(args.hidden_size, self.all_head_size)
-
+        if ed:
+            self.attn_dropout = nn.Dropout(ed)
         self.attn_dropout = nn.Dropout(args.attention_probs_dropout_prob)
 
         self.dense = nn.Linear(args.hidden_size, args.hidden_size) # 128 X 128
@@ -289,7 +290,7 @@ class SelfAttention(nn.Module): # hidden  , attention mask
 
 
 class Intermediate(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args,ed):
         super(Intermediate, self).__init__()
         self.dense_1 = nn.Linear(args.hidden_size, args.hidden_size * 4)
         if isinstance(args.hidden_act, str):
@@ -299,7 +300,10 @@ class Intermediate(nn.Module):
 
         self.dense_2 = nn.Linear(args.hidden_size * 4, args.hidden_size)
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)
-        self.dropout = nn.Dropout(args.hidden_dropout_prob)
+        if ed:
+            self.drop_out = nn.Dropout(ed)
+        else:
+            self.dropout = nn.Dropout(args.hidden_dropout_prob)
 
     def forward(self, input_tensor):
 
@@ -315,12 +319,12 @@ class Intermediate(nn.Module):
 
 
 class Layer(nn.Module): # attention block
-    def __init__(self, args,fft_mode):
+    def __init__(self, args,fft_mode,ed = False):
         super(Layer, self).__init__()
         self.mode = fft_mode
         self.args = args
-        self.attention = SelfAttention(args)
-        self.intermediate = Intermediate(args)
+        self.attention = SelfAttention(args,ed)
+        self.intermediate = Intermediate(args,ed)
         self.hidden_size = 128
         self.i = 2
         self.innersize = 256
@@ -369,7 +373,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.args = args
 
-    def forward(self, hidden_states, attention_mask, mode,output_all_encoded_layers=True):
+    def forward(self, hidden_states, attention_mask, mode,output_all_encoded_layers=True,ed = False):
         """
 
         :param hidden_states: bxmax_Sqxd
@@ -378,9 +382,10 @@ class Decoder(nn.Module):
         :return:
         """
         if mode:
-            layer = Layer(self.args,fft_mode = True)
+            layer = Layer(self.args,fft_mode = True,ed =ed)
         else:
-            layer = Layer(self.args,fft_mode = False)
+            layer = Layer(self.args,fft_mode = False, ed = ed)
+        
         self.layer = nn.ModuleList([copy.deepcopy(layer)
                                     for _ in range(self.args.num_hidden_layers)]).cuda()
         all_decoder_layers = []
