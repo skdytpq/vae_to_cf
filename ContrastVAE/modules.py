@@ -302,9 +302,8 @@ class Intermediate(nn.Module):
 
         self.dense_2 = nn.Linear(args.hidden_size * 4, args.hidden_size)
         self.LayerNorm = LayerNorm(args.hidden_size, eps=1e-12)
-        pdb.set_trace()
         if ed:
-            self.drop_out = nn.Dropout(ed)
+            self.dropout = nn.Dropout(ed)
         else:
             self.dropout = nn.Dropout(args.hidden_dropout_prob)
 
