@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from modules import NCELoss, priorKL
+import pdb
 from utils import recall_at_k, ndcg_k, get_metric, cal_mrr, get_user_performance_perpopularity, get_item_performance_perpopularity
 def word_dropout(step, maximum=0.7, minimum=0.3, warmup=2000, period=500):
 
@@ -356,6 +357,7 @@ class ContrastVAETrainer(Trainer):
             with torch.no_grad():
                 pred_list = None
                 if self.args.word_dropout:
+                    pdb.set_trace()
                     ed = word_dropout(step = self.drop_step)
                 else:
                     ed = False
